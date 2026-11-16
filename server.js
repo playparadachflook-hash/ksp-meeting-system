@@ -348,6 +348,26 @@ app.put('/api/bookings/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+app.patch('/api/bookings/:id/approve', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM bookroom WHERE row_id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'ไม่พบข้อมูลการจองห้องประชุม' });
+
+  const { b_status, room_id, assigned_to, memo } = req.body;
+
+  db.prepare(
+    `UPDATE bookroom SET b_status = ?, room_id = ?, assigned_to = ?, memo = ?, d_update = ? WHERE row_id = ?`
+  ).run(
+    Number(b_status ?? existing.b_status),
+    room_id !== undefined ? Number(room_id) : existing.room_id,
+    (assigned_to ?? existing.assigned_to ?? '').trim(),
+    memo !== undefined ? memo : existing.memo,
+    nowSql(),
+    id
+  );
+  res.json({ ok: true });
+});
+
 app.delete('/api/bookings/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM bookroom WHERE row_id = ?').run(Number(req.params.id));
   res.json({ ok: true });

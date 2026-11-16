@@ -137,6 +137,7 @@ function generateMeetingBookingPdf(booking, res, download = false) {
   const rows2 = [
     ['อุปกรณ์ที่ใช้ในห้องประชุม', equipNames],
     ['การเตรียมอาหารว่าง', foodText],
+    ['ผู้รับผิดชอบ / ผู้ดูแลห้องที่ดำเนินการ', booking.assigned_to || '-'],
     ['สถานะการอนุมัติ', st.label, true],
     ['หมายเหตุ', booking.memo || '-'],
   ];

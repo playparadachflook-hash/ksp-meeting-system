@@ -41,6 +41,7 @@
       <button class="nav-btn" data-tab="create">➕ จองห้องประชุม</button>
       <button class="nav-btn hidden" data-tab="mine" id="tabMine">👤 การจองของฉัน</button>
       <button class="nav-btn" data-tab="reports">📊 รายงานการใช้ห้อง</button>
+      <button class="nav-btn hidden admin-only" data-tab="admin">🛂 อนุมัติ & มอบหมายผู้ดูแล</button>
       <button class="nav-btn hidden admin-only" data-tab="rooms">🏢 ห้องประชุม</button>
       <button class="nav-btn hidden admin-only" data-tab="equipment">🎤 อุปกรณ์โสตฯ</button>
       <button class="nav-btn hidden admin-only" data-tab="units">🏥 หน่วยงาน</button>
@@ -279,6 +280,44 @@
       </div>
     </section>
 
+    <!-- TAB: ADMIN APPROVAL & ASSIGNMENT -->
+    <section id="view-admin" class="tab-view hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>จัดการรายการจองห้องประชุม / อนุมัติและมอบหมายผู้ดูแล</h2>
+          <div class="filters-inline">
+            <select id="adminFilterStatus" onchange="loadAdminList(1)">
+              <option value="0">รออนุมัติ</option>
+              <option value="1">อนุมัติแล้ว</option>
+              <option value="">-- ทั้งหมด --</option>
+              <option value="6">ไม่อนุมัติ</option>
+              <option value="9">ยกเลิกการจอง</option>
+            </select>
+            <input type="text" id="adminFilterQ" placeholder="ค้นหา..." style="height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;" />
+            <button class="btn btn-primary" onclick="loadAdminList(1)">ค้นหา</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>เลขที่</th>
+                <th>วันที่ใช้ห้อง</th>
+                <th>หัวข้อการประชุม</th>
+                <th>ห้องประชุม</th>
+                <th>หน่วยงาน / ผู้จอง</th>
+                <th>ผู้รับผิดชอบดำเนินการ</th>
+                <th>สถานะ</th>
+                <th>จัดการ / อนุมัติ</th>
+              </tr>
+            </thead>
+            <tbody id="adminTbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="adminPagination"></div>
+      </div>
+    </section>
+
     <!-- TAB: ROOMS -->
     <section id="view-rooms" class="tab-view hidden">
       <div class="card">
@@ -384,6 +423,44 @@
         <div id="pdfLoading" class="pdf-loading">กำลังสร้างไฟล์ PDF ขนาด A4...</div>
         <iframe id="pdfFrame" class="pdf-frame" title="PDF Preview"></iframe>
       </div>
+    </div>
+  </div>
+
+  <!-- ADMIN APPROVAL & ASSIGNMENT MODAL -->
+  <div id="adminActionModal" class="modal hidden no-print">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>อนุมัติการจองและมอบหมายผู้ดูแล #<span id="aaRowId"></span></h3>
+        <button class="close-btn" onclick="closeModal('adminActionModal')">✕</button>
+      </div>
+      <div id="aaSummary" class="alert" style="background:#f0f9ff;border-color:#bae6fd;color:#0f172a;display:block;"></div>
+      <form onsubmit="submitAdminAction(event)">
+        <input type="hidden" id="aaId" />
+        <div class="form-group">
+          <label>ผลการอนุมัติ *</label>
+          <select id="aaStatus">
+            <option value="0">รออนุมัติ</option>
+            <option value="1">อนุมัติแล้ว</option>
+            <option value="6">ไม่อนุมัติ</option>
+            <option value="9">ยกเลิกการจอง</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ห้องประชุมที่จัดให้</label>
+          <select id="aaRoomId"></select>
+        </div>
+        <div class="form-group">
+          <label>ระบุผู้รับผิดชอบ / ผู้ไปดำเนินการ</label>
+          <input type="text" id="aaAssignedTo" placeholder="เช่น นายวันชนะ (โสตฯ), แม่บ้าน, ทีมดูแลห้องประชุม..." />
+        </div>
+        <div class="form-group">
+          <label>หมายเหตุ / คำสั่งเพิ่มเติม</label>
+          <textarea id="aaMemo" rows="3" placeholder="บันทึกการอนุมัติหรือหมายเหตุเพิ่มเติม..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary full-btn">💾 บันทึกการอนุมัติและมอบหมาย</button>
+        </div>
+      </form>
     </div>
   </div>
 
