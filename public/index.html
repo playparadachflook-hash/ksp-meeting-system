@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบจองห้องประชุมออนไลน์ โรงพยาบาลโคกศรีสุพรรณ</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230284c7'/%3E%3Cstop offset='100%25' stop-color='%230f172a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Crect x='14' y='18' width='36' height='32' rx='5' fill='none' stroke='%23fff' stroke-width='3.2'/%3E%3Cpath d='M14 28h36M24 12v10M40 12v10' stroke='%23fff' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M23 38l5 5 12-11' fill='none' stroke='%2338bdf8' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar no-print">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-svg">
+            <rect x="8" y="11" width="32" height="29" rx="4" fill="rgba(255,255,255,0.12)" stroke="#ffffff" stroke-width="2.5"/>
+            <path d="M8 19H40M17 7V14M31 7V14" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M17 29L21.5 33.5L31 24.5" stroke="#7dd3fc" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>ระบบจองห้องประชุมออนไลน์</h1>
+          <p>โรงพยาบาลโคกศรีสุพรรณ จังหวัดสกลนคร</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="eco-pill" title="สถิติการลดใช้กระดาษ">
+          🌿 ลดกระดาษ <strong id="ecoPaper">0</strong> แผ่น (<strong id="ecoBaht">0</strong> บ. | <strong id="ecoGhg">0</strong> GHG)
+        </div>
+        <div id="authArea" class="auth-area"></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="navbar no-print">
+    <div class="nav-inner" id="navTabs">
+      <button class="nav-btn active" data-tab="list">📅 ปฏิทินห้องประชุม</button>
+      <button class="nav-btn" data-tab="create">➕ จองห้องประชุม</button>
+      <button class="nav-btn hidden" data-tab="mine" id="tabMine">👤 การจองของฉัน</button>
+      <button class="nav-btn" data-tab="reports">📊 รายงานการใช้ห้อง</button>
+      <button class="nav-btn hidden admin-only" data-tab="rooms">🏢 ห้องประชุม</button>
+      <button class="nav-btn hidden admin-only" data-tab="equipment">🎤 อุปกรณ์โสตฯ</button>
+      <button class="nav-btn hidden admin-only" data-tab="units">🏥 หน่วยงาน</button>
+      <button class="nav-btn hidden admin-only" data-tab="users">👥 ผู้ใช้งาน</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <!-- Stats Summary -->
+    <section class="stats-grid no-print" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-top"><span class="stat-label">การจองทั้งหมด</span><span class="stat-icon">📋</span></div>
+        <div class="stat-value" id="statTotal">-</div>
+      </div>
+      <div class="stat-card status-1">
+        <div class="stat-top"><span class="stat-label">รออนุมัติ</span><span class="stat-icon">⏳</span></div>
+        <div class="stat-value" id="statPending">-</div>
+      </div>
+      <div class="stat-card status-6">
+        <div class="stat-top"><span class="stat-label">อนุมัติแล้ว</span><span class="stat-icon">✅</span></div>
+        <div class="stat-value" id="statApproved">-</div>
+      </div>
+      <div class="stat-card status-0">
+        <div class="stat-top"><span class="stat-label">ไม่อนุมัติ</span><span class="stat-icon">⛔</span></div>
+        <div class="stat-value" id="statRejected">-</div>
+      </div>
+      <div class="stat-card status-9">
+        <div class="stat-top"><span class="stat-label">ยกเลิกการจอง</span><span class="stat-icon">✖️</span></div>
+        <div class="stat-value" id="statCancel">-</div>
+      </div>
+    </section>
+
+    <!-- TAB: LIST / CALENDAR -->
+    <section id="view-list" class="tab-view">
+      <div class="card">
+        <div class="card-header">
+          <h2 id="listTitle">ปฏิทินรายการจองห้องประชุม</h2>
+          <div class="card-actions no-print">
+            <div class="view-toggle">
+              <button class="btn btn-sm active" id="btnViewCal" onclick="setViewMode('calendar')">📅 ปฏิทิน</button>
+              <button class="btn btn-sm" id="btnViewTable" onclick="setViewMode('table')">📋 ตาราง</button>
+            </div>
+            <button class="btn btn-outline" onclick="printBoard()">🖨️ พิมพ์ตารางห้องประชุม</button>
+            <button class="btn btn-primary" onclick="switchTab('create')">➕ จองห้องประชุมใหม่</button>
+          </div>
+        </div>
+
+        <div class="filters no-print">
+          <input type="text" id="filterQ" placeholder="ค้นหา: หัวข้อประชุม, กลุ่มเป้าหมาย, ผู้จอง, เลขที่..." />
+          <select id="filterYear"></select>
+          <select id="filterMonth">
+            <option value="0">-- ทุกเดือน --</option>
+            <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option>
+            <option value="4">เมษายน</option><option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+            <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option><option value="9">กันยายน</option>
+            <option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+          </select>
+          <select id="filterStatus">
+            <option value="">-- ทุกสถานะ --</option>
+            <option value="0">รออนุมัติ</option>
+            <option value="1">อนุมัติแล้ว</option>
+            <option value="6">ไม่อนุมัติ</option>
+            <option value="9">ยกเลิกการจอง</option>
+          </select>
+          <select id="filterRoom"><option value="">-- ห้องประชุมทุกห้อง --</option></select>
+          <button class="btn btn-primary" onclick="applyFilters()">ค้นหา</button>
+          <button class="btn btn-outline" onclick="resetFilters()">ล้างตัวกรอง</button>
+        </div>
+
+        <!-- CALENDAR VIEW -->
+        <div id="calendarContainer">
+          <div class="cal-nav no-print">
+            <div class="cal-nav-left">
+              <button class="btn btn-outline btn-sm" onclick="shiftCalMonth(-1)">◀ เดือนก่อน</button>
+              <button class="btn btn-outline btn-sm" onclick="goCalToday()">วันนี้</button>
+              <button class="btn btn-outline btn-sm" onclick="shiftCalMonth(1)">เดือนถัดไป ▶</button>
+            </div>
+            <h3 id="calMonthLabel" class="cal-month-label"></h3>
+            <div class="cal-legend">
+              <span class="badge badge-1">รออนุมัติ</span>
+              <span class="badge badge-6">อนุมัติแล้ว</span>
+              <span class="badge badge-0">ไม่อนุมัติ</span>
+              <span class="badge badge-9">ยกเลิก</span>
+            </div>
+          </div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+        </div>
+
+        <!-- TABLE VIEW -->
+        <div id="tableContainer" class="hidden">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>เลขที่</th>
+                  <th>วันที่ใช้ห้อง</th>
+                  <th>เวลา</th>
+                  <th>ห้องประชุม</th>
+                  <th>หัวข้อการประชุม</th>
+                  <th>หน่วยงาน</th>
+                  <th>ผู้จอง (จำนวน)</th>
+                  <th>อุปกรณ์ / อาหาร</th>
+                  <th>สถานะ</th>
+                  <th class="no-print">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsTbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination no-print" id="pagination"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: CREATE / EDIT BOOKING -->
+    <section id="view-create" class="tab-view hidden">
+      <div class="card form-card">
+        <div class="card-header">
+          <h2 id="bookingFormTitle">แบบบันทึกขออนุญาตใช้ห้องประชุม</h2>
+          <button class="btn btn-outline" onclick="resetBookingForm()">ล้างฟอร์ม</button>
+        </div>
+        <div id="createAuthNotice" class="alert hidden">
+          กรุณาเข้าสู่ระบบก่อนทำการจองห้องประชุม
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">เข้าสู่ระบบ</button>
+        </div>
+        <form id="bookingForm" onsubmit="submitBooking(event)">
+          <input type="hidden" id="fRowId" />
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>หน่วยงานที่ขอใช้ห้อง</label>
+              <div class="radio-row">
+                <label><input type="radio" name="unitType" value="internal" checked onchange="toggleUnitType()" /> ภายในโรงพยาบาล</label>
+                <label><input type="radio" name="unitType" value="external" onchange="toggleUnitType()" /> หน่วยงานภายนอก</label>
+              </div>
+            </div>
+            <div class="form-group" id="fgUnitInternal">
+              <label>หน่วยงานภายใน *</label>
+              <select id="fUnitId"></select>
+            </div>
+            <div class="form-group hidden" id="fgUnitExternal">
+              <label>ชื่อหน่วยงานภายนอก *</label>
+              <input type="text" id="fUnitOut" placeholder="ระบุชื่อหน่วยงานภายนอก..." />
+            </div>
+            <div class="form-group">
+              <label>ห้องประชุม *</label>
+              <select id="fRoomId" required></select>
+            </div>
+            <div class="form-group">
+              <label>รูปแบบการประชุม</label>
+              <select id="fTypeConfId"></select>
+            </div>
+            <div class="form-group full">
+              <label>เรื่อง / หัวข้อการประชุม *</label>
+              <input type="text" id="fSubject" required placeholder="เช่น ประชุมคณะกรรมการบริหารโรงพยาบาล..." />
+            </div>
+            <div class="form-group">
+              <label>กลุ่มผู้เข้าประชุม</label>
+              <input type="text" id="fPerhead" placeholder="เช่น จนท.รพ., หัวหน้าฝ่าย/งาน..." />
+            </div>
+            <div class="form-group">
+              <label>จำนวนผู้เข้าประชุม (คน)</label>
+              <input type="number" id="fNumper" min="0" placeholder="เช่น 30" />
+            </div>
+            <div class="form-group">
+              <label>วันที่ใช้ห้องประชุม *</label>
+              <input type="date" id="fDatemeet" required />
+            </div>
+            <div class="form-group time-pair">
+              <label>ช่วงเวลาที่ใช้ห้อง</label>
+              <div class="inline-inputs">
+                <input type="time" id="fStime" value="08:30" />
+                <span>ถึง</span>
+                <input type="time" id="fEtime" value="16:30" />
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>อุปกรณ์โสตทัศนูปกรณ์ที่ต้องการใช้</label>
+              <div id="fEquipChecks" class="checkbox-grid"></div>
+            </div>
+            <div class="form-group full">
+              <label>เตรียมอาหารว่าง / อาหารกลางวัน</label>
+              <div class="radio-row">
+                <label><input type="checkbox" id="fFood0" /> อาหารว่างเช้า</label>
+                <label><input type="checkbox" id="fFood1" /> อาหารกลางวัน</label>
+                <label><input type="checkbox" id="fFood2" /> อาหารว่างบ่าย</label>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>หมายเหตุ / รายละเอียดเพิ่มเติม</label>
+              <textarea id="fMemo" rows="3" placeholder="การจัดโต๊ะ รูปแบบห้อง หรือรายละเอียดเพิ่มเติม..."></textarea>
+            </div>
+          </div>
+
+          <!-- Admin section inside form -->
+          <div id="adminFormFields" class="admin-box hidden">
+            <h3>ส่วนสำหรับผู้ดูแลห้องประชุม (อนุมัติการจอง)</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>สถานะการอนุมัติ</label>
+                <select id="fStatus">
+                  <option value="0">รออนุมัติ</option>
+                  <option value="1">อนุมัติแล้ว</option>
+                  <option value="6">ไม่อนุมัติ</option>
+                  <option value="9">ยกเลิกการจอง</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">💾 บันทึกจองห้องประชุม</button>
+            <button type="button" class="btn btn-outline" onclick="switchTab('list')">ยกเลิก</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB: REPORTS -->
+    <section id="view-reports" class="tab-view hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>รายงานสรุปการใช้ห้องประชุม</h2>
+          <div class="filters-inline">
+            <select id="repYear"></select>
+            <select id="repMonth">
+              <option value="0">-- ทั้งปี --</option>
+              <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option>
+              <option value="4">เมษายน</option><option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+              <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option><option value="9">กันยายน</option>
+              <option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+            </select>
+            <button class="btn btn-primary" onclick="loadReports()">ดูรายงาน</button>
+          </div>
+        </div>
+        <div id="reportsContent" class="reports-grid"></div>
+      </div>
+    </section>
+
+    <!-- TAB: ROOMS -->
+    <section id="view-rooms" class="tab-view hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>จัดการข้อมูลห้องประชุม</h2>
+          <button class="btn btn-primary" onclick="openMasterModal('room')">➕ เพิ่มห้องประชุม</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>ชื่อห้องประชุม</th><th>สถานที่ / อาคาร</th><th>ความจุ (คน)</th><th>เบอร์โทร</th><th>จัดการ</th></tr></thead>
+            <tbody id="roomsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: EQUIPMENT -->
+    <section id="view-equipment" class="tab-view hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>จัดการข้อมูลอุปกรณ์ห้องประชุม</h2>
+          <button class="btn btn-primary" onclick="openMasterModal('equipment')">➕ เพิ่มอุปกรณ์</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>ชื่ออุปกรณ์ / ผู้รับผิดชอบ</th><th>จัดการ</th></tr></thead>
+            <tbody id="equipmentTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: UNITS -->
+    <section id="view-units" class="tab-view hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>จัดการข้อมูลหน่วยงาน</h2>
+          <button class="btn btn-primary" onclick="openMasterModal('unit')">➕ เพิ่มหน่วยงาน</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>รหัส</th><th>ชื่อหน่วยงาน</th><th>หัวหน้าหน่วยงาน</th><th>โทร</th><th>จัดการ</th></tr></thead>
+            <tbody id="unitsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: USERS -->
+    <section id="view-users" class="tab-view hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>จัดการข้อมูลผู้ใช้งานระบบ</h2>
+          <button class="btn btn-primary" onclick="openMasterModal('user')">➕ เพิ่มผู้ใช้งาน</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>ชื่อ-นามสกุล</th><th>Username</th><th>หน่วยงาน</th><th>เบอร์โทร</th><th>สิทธิ์</th><th>จัดการ</th></tr></thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="modal hidden no-print">
+    <div class="modal-box modal-sm">
+      <div class="modal-head">
+        <h3>เข้าสู่ระบบจองห้องประชุม</h3>
+        <button class="close-btn" onclick="closeModal('loginModal')">✕</button>
+      </div>
+      <form onsubmit="submitLogin(event)">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="loginUser" required autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPass" required autocomplete="current-password" />
+        </div>
+        <div id="loginError" class="error-text hidden"></div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary full-btn">เข้าสู่ระบบ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- A4 PDF PREVIEW MODAL -->
+  <div id="detailModal" class="modal hidden no-print">
+    <div class="modal-box modal-pdf">
+      <div class="modal-head">
+        <h3 id="pdfModalTitle">ตัวอย่างเอกสาร PDF (ขนาด A4)</h3>
+        <div class="pdf-toolbar">
+          <a id="pdfDownloadBtn" class="btn btn-primary btn-sm" href="#" download>⬇️ ดาวน์โหลด PDF</a>
+          <button class="btn btn-outline btn-sm" onclick="printPdfFrame()">🖨️ พิมพ์ (Print)</button>
+          <a id="pdfNewTabBtn" class="btn btn-outline btn-sm" href="#" target="_blank">↗️ เปิดแท็บใหม่</a>
+          <button class="close-btn" onclick="closePdfModal()">✕</button>
+        </div>
+      </div>
+      <div class="pdf-viewer-wrap">
+        <div id="pdfLoading" class="pdf-loading">กำลังสร้างไฟล์ PDF ขนาด A4...</div>
+        <iframe id="pdfFrame" class="pdf-frame" title="PDF Preview"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- MASTER CRUD MODAL -->
+  <div id="masterModal" class="modal hidden no-print">
+    <div class="modal-box modal-sm">
+      <div class="modal-head">
+        <h3 id="masterModalTitle">เพิ่มข้อมูล</h3>
+        <button class="close-btn" onclick="closeModal('masterModal')">✕</button>
+      </div>
+      <form id="masterForm" onsubmit="submitMaster(event)"></form>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
