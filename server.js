@@ -3,7 +3,7 @@ const path = require('path');
 const express = require('express');
 const session = require('express-session');
 const db = require('./src/db');
-const { generateMeetingBookingPdf, generateMeetingBoardPdf } = require('./src/pdf');
+const { generateMeetingBookingPdf, generateMeetingBoardPdf, generateReportSectionPdf } = require('./src/pdf');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3532);
@@ -374,19 +374,45 @@ app.delete('/api/bookings/:id', requireAdmin, (req, res) => {
 });
 
 // ==================== REPORTS ====================
-app.get('/api/reports/summary', (req, res) => {
-  const { year, month } = req.query;
+function buildReportFilter(query, col = 'b.datemeet') {
+  const { date, year, month, fiscalYear } = query;
   const where = [];
   const params = [];
-  if (year) {
-    where.push("strftime('%Y', b.datemeet) = ?");
-    params.push(String(year));
+  const desc = [];
+
+  if (date) {
+    where.push(`${col} = ?`);
+    params.push(date);
+    desc.push(`วันที่ ${date}`);
+  } else if (fiscalYear) {
+    const fy = Number(fiscalYear);
+    const ce = fy > 2400 ? fy - 543 : fy;
+    const start = `${ce - 1}-10-01`;
+    const end = `${ce}-09-30`;
+    where.push(`${col} >= ? AND ${col} <= ?`);
+    params.push(start, end);
+    desc.push(`ปีงบประมาณ ${ce + 543} (${start} ถึง ${end})`);
+  } else {
+    if (year) {
+      where.push(`strftime('%Y', ${col}) = ?`);
+      params.push(String(year));
+      desc.push(`ปี พ.ศ. ${Number(year) + 543}`);
+    }
+    if (month && Number(month) > 0) {
+      where.push(`strftime('%m', ${col}) = ?`);
+      params.push(String(month).padStart(2, '0'));
+      desc.push(`เดือน ${month}`);
+    }
   }
-  if (month && Number(month) > 0) {
-    where.push("strftime('%m', b.datemeet) = ?");
-    params.push(String(month).padStart(2, '0'));
-  }
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  return {
+    whereSql: where.length ? `WHERE ${where.join(' AND ')}` : '',
+    params,
+    filterDesc: desc.join(' | ') || 'ข้อมูลทั้งหมด',
+  };
+}
+
+function getMeetingReportData(query) {
+  const { whereSql, params, filterDesc } = buildReportFilter(query);
 
   const byDepartment = db
     .prepare(
@@ -427,14 +453,66 @@ app.get('/api/reports/summary', (req, res) => {
     total: rows.filter((t) => (t.equip || '').split('|').includes(String(e.row_id))).length,
   }));
 
-  res.json({
+  return {
+    filterDesc,
     byDepartment,
     byRoom,
     byStatus,
     byEquipment,
     internalCount: rows.filter((t) => !t.unit_out).length,
     externalCount: rows.filter((t) => !!t.unit_out).length,
-  });
+  };
+}
+
+app.get('/api/reports/summary', (req, res) => {
+  res.json(getMeetingReportData(req.query));
+});
+
+app.get('/api/reports/pdf', requireAdmin, (req, res) => {
+  const { section = 'room', download } = req.query;
+  const data = getMeetingReportData(req.query);
+  const isDl = download === '1';
+
+  if (section === 'room') {
+    const cols = [
+      { label: 'ลำดับ', w: 42, align: 'center' },
+      { label: 'ห้องประชุม', w: 270 },
+      { label: 'จำนวน (ครั้ง)', w: 95, align: 'center' },
+      { label: 'ผู้เข้าร่วม (คน)', w: 116, align: 'right' },
+    ];
+    const rows = data.byRoom.map((r, i) => [i + 1, r.name, r.total, Number(r.total_people).toLocaleString()]);
+    return generateReportSectionPdf('รายงานสรุปการใช้ห้องประชุม', data.filterDesc, cols, rows, res, isDl);
+  }
+  if (section === 'department') {
+    const cols = [
+      { label: 'ลำดับ', w: 42, align: 'center' },
+      { label: 'หน่วยงาน', w: 270 },
+      { label: 'จำนวน (ครั้ง)', w: 95, align: 'center' },
+      { label: 'ผู้เข้าร่วม (คน)', w: 116, align: 'right' },
+    ];
+    const rows = data.byDepartment.map((d, i) => [i + 1, d.name, d.total, Number(d.total_people).toLocaleString()]);
+    return generateReportSectionPdf('รายงานสรุปการใช้ห้องประชุมตามหน่วยงาน', data.filterDesc, cols, rows, res, isDl);
+  }
+  if (section === 'equipment') {
+    const cols = [
+      { label: 'ลำดับ', w: 45, align: 'center' },
+      { label: 'อุปกรณ์โสตทัศนูปกรณ์', w: 350 },
+      { label: 'จำนวน (ครั้ง)', w: 128, align: 'center' },
+    ];
+    const rows = data.byEquipment.map((e, i) => [i + 1, e.name, e.total]);
+    return generateReportSectionPdf('รายงานสรุปการใช้อุปกรณ์ห้องประชุม', data.filterDesc, cols, rows, res, isDl);
+  }
+  const STATUS_NAMES = { 0: 'รออนุมัติ', 1: 'อนุมัติแล้ว', 6: 'ไม่อนุมัติ', 9: 'ยกเลิกการจอง' };
+  const cols = [
+    { label: 'รายการ', w: 350 },
+    { label: 'จำนวน (ครั้ง)', w: 173, align: 'center' },
+  ];
+  const rows = [
+    ...data.byStatus.map((s) => [STATUS_NAMES[s.b_status] || s.b_status, s.total]),
+    ['ภายในโรงพยาบาล', data.internalCount],
+    ['หน่วยงานภายนอก', data.externalCount],
+  ];
+  return generateReportSectionPdf('รายงานสรุปตามสถานะและพื้นที่', data.filterDesc, cols, rows, res, isDl);
 });
 
 // ==================== CONFERENCE TYPES ====================
