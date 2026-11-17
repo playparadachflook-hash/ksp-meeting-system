@@ -365,7 +365,7 @@ async function loadBookings(page = 1, exactDate = '') {
             <td>${esc(equips)}</td>
             <td><span class="badge ${st.cls}">${st.label}</span></td>
             <td class="no-print" style="white-space:nowrap">
-              <button class="btn btn-outline btn-sm" onclick="viewBooking(${r.row_id})">ดู/พิมพ์</button>
+              <button class="btn btn-outline btn-sm" onclick="viewBooking(${r.row_id})">${state.user?.isAdmin ? 'ดู/พิมพ์' : 'ดูรายละเอียด'}</button>
               ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="editBooking(${r.row_id})">แก้ไข</button>` : ''}
               ${state.user?.isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteBooking(${r.row_id})">ลบ</button>` : ''}
             </td>
@@ -403,6 +403,10 @@ document.getElementById('filterQ').addEventListener('keydown', (e) => {
 
 // ==================== A4 PDF MODAL ====================
 function openPdfModal(title, pdfUrl) {
+  if (!state.user?.isAdmin) {
+    alert('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถดาวน์โหลดหรือพิมพ์เอกสารได้');
+    return;
+  }
   const modal = document.getElementById('detailModal');
   const frame = document.getElementById('pdfFrame');
   const loading = document.getElementById('pdfLoading');
@@ -435,8 +439,38 @@ function printPdfFrame() {
   }
 }
 
+async function openRequestDetailModal(id) {
+  const r = await api(`/api/bookings/${id}`);
+  const st = STATUS_MAP[r.b_status] || { label: `สถานะ ${r.b_status}`, cls: 'badge-1' };
+  const unit = r.unit_name || r.unit_out || '-';
+  const equips = r.equipNames && r.equipNames.length ? r.equipNames.join(', ') : '-';
+  document.getElementById('reqDetailTitle').textContent = `รายละเอียดการขอใช้ห้องประชุม #${r.row_id}`;
+  document.getElementById('reqDetailBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;font-size:14px;">
+      <div><strong>เลขที่รายการ:</strong> #${r.row_id}</div>
+      <div><strong>สถานะ:</strong> <span class="badge ${st.cls}">${st.label}</span></div>
+      <div><strong>วันที่ประชุม:</strong> ${fmtThaiDate(r.datemeet)}</div>
+      <div><strong>เวลา:</strong> ${esc(r.s_time || '-')}${r.e_time ? ' - ' + esc(r.e_time) : ''}</div>
+      <div style="grid-column:1/-1;"><strong>หัวข้อประชุม:</strong> ${esc(r.subject || '-')}</div>
+      <div><strong>ห้องประชุม:</strong> ${esc(r.room_name || '-')}</div>
+      <div><strong>จำนวนผู้เข้าร่วม:</strong> ${esc(r.numper || '-')} คน</div>
+      <div><strong>ผู้จอง:</strong> ${esc(r.perbook || '-')}</div>
+      <div><strong>เบอร์โทร:</strong> ${esc(r.tel || '-')}</div>
+      <div style="grid-column:1/-1;"><strong>หน่วยงาน:</strong> ${esc(unit)}</div>
+      <div style="grid-column:1/-1;"><strong>อุปกรณ์โสตทัศนูปกรณ์:</strong> ${esc(equips)}</div>
+      <div style="grid-column:1/-1;"><strong>หมายเหตุ / รายละเอียดเพิ่มเติม:</strong> ${esc(r.memo || '-')}</div>
+      <div style="grid-column:1/-1;"><strong>ความเห็นผู้ดูแลระบบ:</strong> ${esc(r.memo1 || '-')}</div>
+    </div>
+  `;
+  document.getElementById('requestDetailModal').classList.remove('hidden');
+}
+
 function viewBooking(id) {
-  openPdfModal(`ใบขออนุญาตใช้ห้องประชุม #${id} (ขนาด A4)`, `/api/bookings/${id}/pdf`);
+  if (state.user?.isAdmin) {
+    openPdfModal(`ใบขออนุญาตใช้ห้องประชุม #${id} (ขนาด A4)`, `/api/bookings/${id}/pdf`);
+  } else {
+    openRequestDetailModal(id).catch((err) => alert(err.message));
+  }
 }
 
 function printBoard() {
@@ -593,7 +627,7 @@ async function loadReports() {
     <div class="report-box">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
         <h3 style="margin:0;">${title}</h3>
-        <button class="btn btn-outline btn-sm" onclick="printReportSection('${section}', '${title}')">🖨️ พิมพ์ / PDF</button>
+        ${state.user?.isAdmin ? `<button class="btn btn-outline btn-sm" onclick="printReportSection('${section}', '${title}')">🖨️ พิมพ์ / PDF</button>` : ''}
       </div>
       <div class="table-wrap">
         <table>
