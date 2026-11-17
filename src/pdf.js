@@ -160,22 +160,25 @@ function generateMeetingBookingPdf(booking, res, download = false) {
   }
 
   // ===== SIGNATURE BLOCK =====
-  const sigY = Math.max(y + 34, 650);
+  const sigY = Math.max(y + 24, 632);
   const colW = contentW / 3;
   const sigs = [
-    { title: 'ผู้ขอจองห้องประชุม', name: booking.perbook || '' },
-    { title: 'ผู้ดูแลโสตฯ / ห้องประชุม', name: '' },
-    { title: 'ผู้อนุมัติ', name: '' },
+    { title: 'ผู้ขอจองห้องประชุม', sub: '', name: booking.perbook || '' },
+    { title: 'ผู้ดูแลโสตฯ / ห้องประชุม', sub: '', name: '' },
+    { title: 'นายแพทย์ชำนาญการพิเศษ', sub: 'รักษาการในตำแหน่ง\nผู้อำนวยการ รพ.โคกศรีสุพรรณ', name: 'นางณัฐปภัสร์ นวัตชัยศิริกุล' },
   ];
 
   sigs.forEach((s, idx) => {
     const sx = left + idx * colW;
-    doc.fillColor('#334155').font('Sarabun').fontSize(10)
+    doc.fillColor('#334155').font('Sarabun').fontSize(9.5)
       .text('ลงชื่อ ...............................................', sx, sigY, { width: colW, align: 'center' });
-    doc.text(`( ${s.name ? s.name : '...........................................'} )`, sx, sigY + 18, { width: colW, align: 'center' });
-    doc.font('Sarabun-Bold').text(s.title, sx, sigY + 35, { width: colW, align: 'center' });
-    doc.font('Sarabun').fontSize(9).fillColor('#64748b')
-      .text('วันที่ ........../........../..........', sx, sigY + 52, { width: colW, align: 'center' });
+    doc.text(`( ${s.name ? s.name : '...........................................'} )`, sx, sigY + 17, { width: colW, align: 'center' });
+    doc.font('Sarabun-Bold').text(s.title, sx, sigY + 34, { width: colW, align: 'center' });
+    if (s.sub) {
+      doc.font('Sarabun').fontSize(8.5).text(s.sub, sx, sigY + 49, { width: colW, align: 'center' });
+    }
+    doc.font('Sarabun').fontSize(8.5).fillColor('#64748b')
+      .text('วันที่ ........../........../..........', sx, sigY + (s.sub ? 75 : 52), { width: colW, align: 'center' });
   });
 
   const nowStr = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
@@ -277,6 +280,19 @@ function generateMeetingBoardPdf(items, filterDesc, res, download = false) {
     });
     y += maxH;
   }
+
+  if (y + 105 > doc.page.height - 28) {
+    doc.addPage({ size: 'A4', layout: 'landscape', margins: { top: 32, bottom: 32, left: 30, right: 30 } });
+    y = 40;
+  }
+  const dirX = left + contentW - 260;
+  const dirY = y + 18;
+  doc.fillColor('#0f172a').font('Sarabun').fontSize(9.5)
+    .text('ลงชื่อ ...............................................', dirX, dirY, { width: 260, align: 'center' })
+    .text('( นางณัฐปภัสร์ นวัตชัยศิริกุล )', dirX, dirY + 17, { width: 260, align: 'center' });
+  doc.font('Sarabun-Bold').text('นายแพทย์ชำนาญการพิเศษ', dirX, dirY + 34, { width: 260, align: 'center' });
+  doc.font('Sarabun').fontSize(9)
+    .text('รักษาการในตำแหน่ง\nผู้อำนวยการ รพ.โคกศรีสุพรรณ', dirX, dirY + 50, { width: 260, align: 'center' });
 
   doc.end();
 }
